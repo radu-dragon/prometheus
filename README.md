@@ -121,8 +121,8 @@ kubectl apply -f prod/grafana-dashboard.yaml
 ## Production Resource Requirements
 
 ### Compute Resources
-- **CPU**: 12-16 cores minimum
-- **Memory**: 64-128GB RAM
+- **CPU**: 8-16 cores minimum
+- **Memory**: 16-32GB RAM
 - **Storage**: 1TB high-performance SSD (gp3 or equivalent)
 
 ### Expected Costs
