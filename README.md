@@ -123,6 +123,7 @@ kubectl create configmap grafana-dashboard-custom \
 kubectl label configmap grafana-dashboard-custom \
   grafana_dashboard=1 \
   --namespace=spinnaker
+```
 
 ## Production Resource Requirements
 
