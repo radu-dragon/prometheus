@@ -1,0 +1,33 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app: spin
+    release: adsk-prometheus
+  name: spinnaker-clouddriver-metrics
+  namespace: spinnaker
+spec:
+  endpoints:
+  - interval: 30s
+    path: /aop-prometheus
+    port: http
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+    metricRelabelings:
+    # Keep only the metrics we want - everything else is automatically dropped
+    - sourceLabels: [__name__]
+      regex: 'controller_invocations_total|controller_invocations_seconds_sum|controller_invocations_seconds_count|operations_seconds_sum|operations_seconds_count|tasks_total|executionTime_seconds_count|executionTime_seconds_sum|onDemand_read_seconds_count|onDemand_read_seconds_sum|cats_sqlCache_get_relationshipsRequested_total|cats_sqlCache_get_itemCount_total|cats_sqlCache_merge_relationshipCount_total|cats_sqlCache_merge_itemCount_total|cats_sqlCache_evict_itemCount_total|up|scrape_duration_seconds|scrape_samples_scraped'
+      action: keep
+  namespaceSelector:
+    matchNames:
+    - spinnaker
+  selector:
+    matchLabels:
+      app: spin
+    matchExpressions:
+    - key: cluster
+      operator: In
+      values:
+      - spin-clouddriver-caching
+      - spin-canary-clouddriver-caching

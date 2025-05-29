@@ -1,0 +1,141 @@
+# prod/prometheus-values.yaml
+# Production Prometheus configuration for high-volume metrics
+# 65 clouddriver pods × ~30-50MB (after filtering) = ~2-3GB per scrape
+
+global:
+  commonLabels: {}
+
+# Disable Node Exporter as requested
+prometheus-node-exporter:
+  enabled: false
+
+nodeExporter:
+  enabled: false
+
+# Prometheus configuration - Production scaled
+prometheus:
+  enabled: true
+  namespaceOverride: "prometheus"
+  serviceAccount:
+    create: false
+    name: adsk-prometheus-server
+  prometheusSpec:
+    # HIGH PERFORMANCE STORAGE CONFIGURATION
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          storageClassName: "gp3"  # Use high-performance storage
+          resources:
+            requests:
+              storage: 1Ti  # 1TB for high volume metrics with 7-day retention
+              
+    # OPTIMIZED RESOURCE ALLOCATION for production workload
+    resources:
+      requests:
+        memory: 16Gi     # Reduced memory for better node allocation
+        cpu: 8000m      # 8 CPU cores for solid processing power
+      limits:
+        memory: 32Gi    # Reduced memory limit - still generous headroom
+        cpu: 16000m     # 16 cores max - good for EKS node efficiency
+        
+    # PERFORMANCE TUNING for high-volume metrics
+    additionalArgs:
+      - "--storage.tsdb.wal-compression=true"
+      - "--query.max-samples=1000000000"      # 1 billion sample limit
+      - "--storage.tsdb.max-block-duration=2h" # Shorter blocks for better performance
+      - "--storage.tsdb.min-block-duration=30m"
+      - "--storage.tsdb.retention.time=7d"
+      - "--storage.tsdb.retention.size=900GB"  # 90% of storage allocation
+      - "--web.enable-lifecycle"
+      - "--storage.tsdb.head-chunks-write-queue-size=50000"
+      - "--query.timeout=10m"                 # Longer query timeout
+      - "--query.max-concurrent=20"           # More concurrent queries
+      
+    # NAMESPACE TARGETING
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: spinnaker
+        
+    serviceMonitorNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: spinnaker
+        
+    podMonitorNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: spinnaker
+        
+    # ServiceMonitor selector
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector:
+      matchLabels:
+        release: adsk-prometheus
+        
+    # RETENTION SETTINGS
+    retention: 7d
+    retentionSize: "900GB"
+    
+    # RESOURCE LIMITS
+    podMetadata:
+      labels: {}
+
+# Disable components as requested
+kubeStateMetrics:
+  enabled: false
+  
+# Prometheus Operator configuration
+prometheusOperator:
+  enabled: true
+  namespaces:
+    releaseNamespace: true
+    additional:
+      - spinnaker
+  # Moderate operator resources for production
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  podLabels: {}
+
+# Grafana configuration - moderate resources since it's just for dashboards
+grafana:
+  enabled: true
+  namespaceOverride: "prometheus"
+  serviceAccount:
+    create: true
+    name: adsk-grafana
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: "spinnaker"
+      label: grafana_dashboard
+      labelValue: "1"
+      provider:
+        name: "dashboards"
+        orgId: 1
+        folder: ""
+        type: file
+        disableDeletion: false
+        allowUiUpdates: false
+    datasources:
+      searchNamespace: "spinnaker"
+  persistence:
+    enabled: true
+    size: 10Gi  # Larger for production
+    storageClassName: "gp3"
+  # Moderate Grafana resources
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 2Gi
+      cpu: 1000m
+  podLabels: {}
+
+# Disable AlertManager as requested
+alertmanager:
+  enabled: false

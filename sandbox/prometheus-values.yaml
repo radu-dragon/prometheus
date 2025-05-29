@@ -1,0 +1,107 @@
+# prometheus-values.yaml
+global:
+  commonLabels: {}
+
+# Disable Node Exporter
+prometheus-node-exporter:
+  enabled: false
+
+nodeExporter:
+  enabled: false
+
+# Prometheus configuration
+prometheus:
+  enabled: true
+  namespaceOverride: "prometheus"
+  serviceAccount:
+    create: false  # Don't create a service account since we're providing our own
+    name: adsk-prometheus-server  # Use our custom service account
+  prometheusSpec:
+    # Configure persistence
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+              
+    # Specify which namespaces to monitor (only spinnaker)
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: spinnaker
+        
+    serviceMonitorNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: spinnaker
+        
+    podMonitorNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: spinnaker
+        
+    # Ensure ServiceMonitors are picked up
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector:
+      matchLabels:
+        release: adsk-prometheus
+        
+    # Retention settings for time series data
+    retention: 7d  # One week retention
+    retentionSize: "40GB"
+        
+    # Resource settings to ensure stability
+    resources:
+      requests:
+        memory: 512Mi
+        cpu: 500m
+      limits:
+        memory: 2Gi
+            
+    podMetadata:
+      labels: {}  # Removed Karpenter labels
+
+# Disable kube-state-metrics as requested
+kubeStateMetrics:
+  enabled: false
+  
+# Prometheus Operator configuration
+prometheusOperator:
+  enabled: true
+  namespaces:
+    releaseNamespace: true
+    additional:
+      - spinnaker
+  podLabels: {} 
+
+# Grafana configuration with ConfigMap for dashboards
+# Grafana configuration with ConfigMap for dashboards
+grafana:
+  enabled: true
+  namespaceOverride: "prometheus"
+  serviceAccount:
+    create: true
+    name: adsk-grafana  # Custom service account for Grafana
+  sidecar:
+    dashboards:
+      enabled: true
+      searchNamespace: "spinnaker"
+      label: grafana_dashboard  # Added: key for the ConfigMap label to look for
+      labelValue: "true"        # Added: value for the ConfigMap label to look for
+      provider:
+        # Enable ConfigMap-based dashboards
+        name: "dashboards"
+        orgId: 1
+        folder: ""
+        type: file
+        disableDeletion: false
+        allowUiUpdates: false
+    datasources:
+      searchNamespace: "spinnaker"
+  persistence:
+    enabled: true
+    size: 10Gi
+  podLabels: {}  # Removed Karpenter labels
+
+# Disable AlertManager as requested
+alertmanager:
+  enabled: false
