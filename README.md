@@ -114,9 +114,15 @@ kubectl apply -f prod/servicemonitor.yaml
 ```
 
 ### 5. Deploy Grafana Dashboard
+Create ConfigMap in `spinnaker` namespace:
 ```bash
-kubectl apply -f prod/grafana-dashboard.yaml
-```
+kubectl create configmap grafana-dashboard-custom \
+  --from-file=clouddriver-dashboard.json \
+  --namespace=spinnaker
+
+kubectl label configmap grafana-dashboard-custom \
+  grafana_dashboard=1 \
+  --namespace=spinnaker
 
 ## Production Resource Requirements
 
@@ -147,7 +153,7 @@ metadata:
 1. Create ConfigMap in `spinnaker` namespace:
 ```bash
 kubectl create configmap grafana-dashboard-custom \
-  --from-file=clouddriver-dashboard.json \
+  --from-file=custom_dashboard.json \
   --namespace=spinnaker
 
 kubectl label configmap grafana-dashboard-custom \
